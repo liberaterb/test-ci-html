@@ -1,0 +1,42 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build the Docker image
+        run: docker image build -t lib201901/cloud-note:latest .
+      - name: Login to registry
+        run: docker login -u lib201901 -p liben1998
+      - name: Push Image
+        run: docker push lib201901/cloud-note:latest
+
+
+  pull-docker:
+    needs: [build]
+    name: Pull Docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: 23.105.222.59
+          username: root
+          key: ${{ secrets.KEY }}
+          port: 29064
+          script: |
+            docker container rm -f cloud-disk
+            docker image rm -f lib201901/cloud-note:latest
+            docker login -u lib201901 -p liben1998
+            docker pull lib201901/cloud-note:latest
+            docker container run -d -p 8000:80 --name="cloud-disk" --restart=always lib201901/cloud-note:latest
